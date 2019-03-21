@@ -23,14 +23,14 @@ def parse_header(header_path, req_amount):
         word_l = f.read().split('\n')
         for s in word_l:
             # Class name
-            if re.match('class\s+(\w+)', s):
+            if re.match(r'class\s+(\w+)', s):
                 class_name = s.split(' ')[1]
             # Members
-            extract(members, '\s+(?P<type>\w+)\s+(?P<name>\w+)(?P<arr_size>(\[\d+\])*);', s, False)
+            extract(members, r'\s+(?P<type>\w+)\s+(?P<name>\w+)(?P<arr_size>(\[\d+\])*);', s, False)
             # Ctors
-            extract(ctors, f'\s+{class_name}(\((?P<args_str>([^\)]*)))\)', s, True)
+            extract(ctors, rf'\s+{class_name}(\((?P<args_str>([^\)]*)))\)', s, True)
             # Methods and setters
-            extract(methods, '\s+(?P<ret_type>\w+) (?P<name>\w+)(\((?P<args_str>.*)\));', s, True)
+            extract(methods, r'\s+(?P<ret_type>\w+) (?P<name>\w+)(\((?P<args_str>.*)\));', s, True)
 
     return class_name, class_json
 
@@ -147,15 +147,13 @@ def prerequisite_objs(cjson):
 
 
 def prereq_for_classes(cls_json):
-    prereq_dict = {}
+    final_cnt = Counter()
     for cls in cls_json:
         req_amount = json_navigator(f'/{cls}/req_amount', cls_json)
-        if req_amount < 1: req_amount = 1
-        for k, v in prerequisite_objs(cls_json[cls]).items():
-            if k in prereq_dict.keys():
-                prereq_dict[k] += v * req_amount
-            else:
-                prereq_dict[k] = v * req_amount
+        if req_amount < 1:
+            req_amount = 1
+        final_cnt.update(prerequisite_objs(cls_json[cls]))
+    prereq_dict = {k: v * req_amount for k, v in final_cnt.items()}
     return prereq_dict
 
 
@@ -179,13 +177,10 @@ def check_cls_depth(cls_json, class_name):
 
 
 def check_depths(cls_json):
-    depths = {}
+    depths = defaultdict(list)
     for cls_name in cls_json.keys():
         depth = check_cls_depth(cls_json, cls_name)
-        if depth in depths.keys():
-            depths[depth] += [cls_name]
-        else:
-            depths[depth] = [cls_name]
+        depths[depth] += [cls_name]
     return depths
 
 
