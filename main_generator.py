@@ -23,14 +23,14 @@ def parse_header(header_path, req_amount):
         word_l = f.read().split('\n')
         for s in word_l:
             # Class name
-            if re.match('class\s(\w+)', s):
+            if re.match('class\s+(\w+)', s):
                 class_name = s.split(' ')[1]
             # Members
-            extract(members, '\\t(?P<type>\w+)\s+(?P<name>\w+)(?P<arr_size>(\[\d+\])*);', s, False)
+            extract(members, '\s+(?P<type>\w+)\s+(?P<name>\w+)(?P<arr_size>(\[\d+\])*);', s, False)
             # Ctors
-            extract(ctors, '\\t(\w+)(\((?P<args_str>.*)\));', s, True)
+            extract(ctors, f'\s+{class_name}(\((?P<args_str>([^\)]*)))\)', s, True)
             # Methods and setters
-            extract(methods, '\\t(?P<ret_type>\w+) (?P<name>\w+)(\((?P<args_str>.*)\));', s, True)
+            extract(methods, '\s+(?P<ret_type>\w+) (?P<name>\w+)(\((?P<args_str>.*)\));', s, True)
 
     return class_name, class_json
 
@@ -160,7 +160,7 @@ def prereq_for_classes(cls_json):
 
 
 def check_cls_depth(cls_json, class_name):
-    bi_types = ['int', 'bool', 'char', 'char*', 'double', 'float']
+    bi_types = ['int', 'int*', 'bool', 'char', 'char*', 'double', 'float']
     cls = cls_json[class_name]
     for ctor in cls['ctors']:
         if ctor['args_required'] > 0:
@@ -193,7 +193,7 @@ def main_generator(paths):
     final_str = ""
     pre_objs = []
     total_cls_json = classes_json_gen(paths)
-    # print(json.dumps(total_cls_json,indent=3))
+    print(json.dumps(total_cls_json, indent=3))
     depths = check_depths(total_cls_json)
     prereq = prereq_for_classes(total_cls_json)
     for depth in range(1, max(depths.keys()) + 1):
@@ -214,5 +214,5 @@ if __name__ == '__main__':
              r'C:\Users\User\Desktop\CPP\Ex2\T2\T2\Line.h': 2,
              r'C:\Users\User\Desktop\CPP\Ex2\T2\T2\Triangle.h': 2}
 
-    main_generator(paths)
+    # main_generator(paths)
     print(main_generator(paths))
