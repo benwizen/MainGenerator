@@ -4,7 +4,7 @@ import json
 from jsonStepper import json_navigator
 from random_name import rand_name
 from collections import Counter, defaultdict
-from random import *
+from random import uniform, choice, randint
 from functools import reduce
 
 
@@ -72,24 +72,23 @@ def array_generator(arr_type, arr_len):
 class UnregisteredType(Exception):
     """ Exception class for unregistered type.
         Type needs to be added to bi_types in functions """
+
     def __init__(self, message):
         super().__init__(message)
 
 
 def random_value_gen(cpp_type):
     try:
-        if cpp_type == 'int':
-            return randint(1, 100)
-        elif cpp_type == 'float' or cpp_type == 'double':
-            return round(uniform(1, 10), 2)
-        elif cpp_type == 'char':
-            return random.choice(string.ascii_letters)
-        elif cpp_type == 'char*' or cpp_type == 'string':
-            return rand_name()
-        else:
-            raise UnregisteredType("Unknown type in random_value_gen")
-    except UnregisteredType as e:
-        print(e)
+        return {
+            'int': randint(1, 100),
+            'float': round(uniform(1, 10), 2),
+            'double': round(uniform(1, 10), 2),
+            'char': choice(string.ascii_letters),
+            'char*': rand_name(),
+            'string': rand_name()
+        }[cpp_type]
+    except KeyError:
+        raise UnregisteredType("Unknown type in random_value_gen")
 
 
 def arg_gen(arg, obj_id, obj_number, pre_objs):
@@ -132,7 +131,7 @@ def generate_objects(class_name, cjson, pre_objs, count=5):
             rel_ctor = ctor
             break
 
-    for obj_number in range(1, count+1):
+    for obj_number in range(1, count + 1):
         args_required = int(json_navigator('/args_required', rel_ctor))
         obj_id = f'{class_name.lower()}{obj_number}'
         objs.append({'class': class_name, 'obj_id': obj_id})
@@ -222,10 +221,10 @@ def main_generator(paths):
 
 
 if __name__ == '__main__':
-
     headers = {r'.\cpp_headers\Point.h': 2,
                r'.\cpp_headers\Line.h': 2,
                r'.\cpp_headers\Triangle.h': 2}
 
+
     # main_generator(headers)
-    print(main_generator(headers))
+    # print(main_generator(headers))
