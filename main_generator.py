@@ -9,6 +9,16 @@ from functools import reduce
 
 
 def parse_header(header_path, req_amount):
+    """ Parses C++ header using regex and stores the results in a JSON.
+
+    Parameters:
+    header_path (str): The file path of the C++ header.
+    req_amount (int): The number of requested/needed instances of the class.
+
+    Returns:
+    dict: a JSON with information about the class.
+    """
+
     with open(header_path) as f:
         methods = []
         members = []
@@ -35,9 +45,22 @@ def parse_header(header_path, req_amount):
     return class_name, class_json
 
 
-def extract(regex_pattern, in_str, is_func):
-    if re.match(regex_pattern, in_str):
-        m = re.search(regex_pattern, in_str)
+def extract(regex_pattern, line, is_func):
+    """ Extracts values based on the regex pattern from a single
+        line of a header given to the function.
+
+    Parameters:
+    regex_pattern (str): Regex pattern to catch.
+    line (str): A string to search .
+    is_func (bool): Boolean parameter for extra operations (parse function arguments).
+
+    Returns:
+    list: a list that includes a groupdict from the 're' module.
+    (or an empty list if there were no matches).
+    """
+
+    if re.match(regex_pattern, line):
+        m = re.search(regex_pattern, line)
         matches = m.groupdict()
         if is_func:
             args_comma_sep = list(filter(None, [x.strip() for x in matches['args_str'].split(',')]))
@@ -61,6 +84,16 @@ def extract(regex_pattern, in_str, is_func):
 
 
 def array_generator(arr_type, arr_len):
+    """ Generates the values of each element in a array (C++).
+
+    Parameters:
+    arr_type (str): The type of the array.
+    arr_len (int): The size of the array.
+
+    Returns:
+    string: Element values of an array.
+    """
+
     arr_str = '{'
     for _ in range(arr_len):
         arr_str += f'{random_value_gen(arr_type)}, '
@@ -78,20 +111,41 @@ class UnregisteredType(Exception):
 
 
 def random_value_gen(cpp_type):
+    """ Generates random value for a given type.
+
+    Parameters:
+    cpp_type (str): The type of the variable.
+
+    Returns:
+    string: random value for a given type.
+    """
+
     try:
-        return {
+        return str({
             'int': randint(1, 100),
             'float': round(uniform(1, 10), 2),
             'double': round(uniform(1, 10), 2),
             'char': choice(string.ascii_letters),
             'char*': rand_name(),
             'string': rand_name()
-        }[cpp_type]
+        }[cpp_type])
     except KeyError:
         raise UnregisteredType("Unknown type in random_value_gen")
 
 
 def arg_gen(arg, obj_id, obj_number, pre_objs):
+    """ Generates arguments for constructors of classes.
+
+    Parameters:
+    arg (str): A JSON representing the argument.
+    obj_id (str): A unique identifier for the object.
+    obj_number (int): Object counter in case of arrays. (Not finished).
+    pre_objs (list): A list of 'pre-created' objects for complex class members.
+
+    Returns:
+    string: Complete arguments string for a constructor.
+    """
+
     arg_str = ""
     bi_types = ['int', 'int*', 'bool', 'char', 'char*', 'double', 'float']
     m_type = arg['type']
@@ -115,13 +169,26 @@ def arg_gen(arg, obj_id, obj_number, pre_objs):
         arr = f"{arg['type']} {arg_name}{arr_size} = {array_generator('int', int(arr_len))};\n"
         arg_str = arr + arg_str + f"{arg_name}, "
     else:
-        rnd = random_value_gen(m_type)
-        arg_str += str(rnd)
+        arg_str += random_value_gen(m_type)
         arg_str += ", "
     return arg_str
 
 
 def generate_objects(class_name, cjson, pre_objs, count=5):
+    """ Generates instances of classes.
+
+    Parameters:
+    class_name (str): Class name
+    cjson (str): A JSON representing the class architecture.
+    pre_objs (int): A list of 'pre-created' objects for complex class members.
+    count (int): How many instances for the given class.
+
+    Returns:
+    string: Complete objects string for a class.
+    list: A list of objects of the given class for later usage as members in
+        other classes.
+    """
+
     str_objs = ""
     objs = []
     rel_ctor = None
@@ -145,6 +212,15 @@ def generate_objects(class_name, cjson, pre_objs, count=5):
 
 
 def classes_json_gen(headers_list):
+    """ Parses all class headers and generates a JSON representing the classes' architecture.
+
+    Parameters:
+    headers_list (list): List of header paths.
+
+    Returns:
+    string (JSON): A JSON representing the classes' architecture.
+    """
+
     classes = {}
     for class_header, amount in headers_list.items():
         class_name, cjson = parse_header(class_header, amount)
@@ -153,6 +229,15 @@ def classes_json_gen(headers_list):
 
 
 def prerequisite_objs(cjson):
+    """ Checks the prerequisites for a given class.
+
+    Parameters:
+    cjson (str): A JSON representing the class architecture.
+
+    Returns:
+    dict (Counter): Counter - key-value pair of (prerequisite class - count needed).
+    """
+
     bi_types = ['int', 'bool', 'char', 'char*', 'double', 'float']
     for ctor in cjson['ctors']:
         if ctor['args_required'] > 0:
@@ -161,6 +246,15 @@ def prerequisite_objs(cjson):
 
 
 def prereq_for_classes(cls_json):
+    """ Checks the prerequisites for all classes.
+
+    Parameters:
+    cls_json (str): A JSON representing all classes' architecture.
+
+    Returns:
+    dict : key-value pair of (prerequisite class - count needed) for all classes.
+    """
+
     final_cnt = Counter()
     for cls in cls_json:
         req_amount = json_navigator(f'/{cls}/req_amount', cls_json)
@@ -172,6 +266,16 @@ def prereq_for_classes(cls_json):
 
 
 def check_cls_depth(cls_json, class_name):
+    """ Checks the depth (Count of drill downs of complex members) of a class.
+
+    Parameters:
+    cls_json (str): A JSON representing the class architecture.
+    class_name (str): Class name.
+
+    Returns:
+    int : depth of the class.
+    """
+
     bi_types = ['int', 'int*', 'bool', 'char', 'char*', 'double', 'float']
     cls = cls_json[class_name]
     for ctor in cls['ctors']:
@@ -192,6 +296,15 @@ def check_cls_depth(cls_json, class_name):
 
 
 def check_depths(cls_json):
+    """ Checks the depths (Count of drill downs of complex members) for all classes.
+
+    Parameters:
+    cls_json (str): A JSON representing all classes' architecture.
+
+    Returns:
+    dict : key-value pair of (class_name - depth) for all classes.
+    """
+
     depths = defaultdict(list)
     for cls_name in cls_json.keys():
         depth = check_cls_depth(cls_json, cls_name)
@@ -200,6 +313,17 @@ def check_depths(cls_json):
 
 
 def main_generator(paths):
+    """ The main that orchestrates over all of the function.
+        Purpose: ease the process of debugging C++ methods of classes by generating
+        objects' creation string in main.
+
+    Parameters:
+    paths (dict): key-value pair of (header paths - requested amount of instances of the class.
+
+    Returns:
+    string : A string that represents a C++ main - generated objects.
+    """
+
     final_str = ""
     pre_objs = []
     total_cls_json = classes_json_gen(paths)
@@ -225,6 +349,5 @@ if __name__ == '__main__':
                r'.\cpp_headers\Line.h': 2,
                r'.\cpp_headers\Triangle.h': 2}
 
-
     # main_generator(headers)
-    # print(main_generator(headers))
+    print(main_generator(headers))
